@@ -65,14 +65,24 @@ impl Transformer for ProviderPipeline<'_> {
         let github_copilot_reasoning =
             GitHubCopilotReasoning.when(move |_| provider.id == ProviderId::GITHUB_COPILOT);
 
+        let is_deepseek_model = move |request: &Request| when_model("deepseek")(request);
+
         let reasoning_content = ReasoningContent.when(move |request: &Request| {
             provider.id == ProviderId::FIREWORKS_AI
                 || is_deepseek_provider(provider)
                 || when_model("kimi")(request)
+                || ((provider.id == ProviderId::OPENCODE_ZEN
+                    || provider.id == ProviderId::OPENCODE_GO)
+                    && is_deepseek_model(request))
         });
 
         let default_reasoning_content =
-            DefaultReasoningContent.when(move |_| is_deepseek_provider(provider));
+            DefaultReasoningContent.when(move |request: &Request| {
+                is_deepseek_provider(provider)
+                    || ((provider.id == ProviderId::OPENCODE_ZEN
+                        || provider.id == ProviderId::OPENCODE_GO)
+                        && is_deepseek_model(request))
+            });
 
         let cerebras_compat = MakeCerebrasCompat.when(move |_| provider.id == ProviderId::CEREBRAS);
 
